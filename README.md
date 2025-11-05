@@ -74,11 +74,13 @@ The server will be live at `http://127.0.0.1:8000`.
 
 Upon starting, the application will perform an initial scrape of the news feeds.
 
-2. Launch the Streamlit Dashboard
+## Launch the Streamlit Dashboard
+
 In a new terminal, launch the Streamlit dashboard.
-code
-Bash
-```streamlit run dashboard.py```
+
+```bash
+streamlit run dashboard.py
+```
 
 The dashboard will be accessible at `http://localhost:8501`.
 
