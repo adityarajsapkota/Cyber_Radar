@@ -26,16 +26,13 @@ class TaskScheduler:
         logger.info("Starting scheduled scrape job")
         
         try:
-            # Scrape all feeds
+    
             articles, stats = scraper.scrape_sync()
             
-            # Store in database
             new_count = db.add_articles(articles)
             
-            # Update stats with actual new articles count
             stats.new_articles = new_count
             
-            # Get total articles from database
             db_stats = db.get_stats()
             stats.total_articles = db_stats.get('total_articles', 0)
             
@@ -76,7 +73,7 @@ class TaskScheduler:
             f"Scheduler started with interval: {settings.scrape_interval_hours} hours"
         )
         
-        # Run immediately if requested
+       
         if run_immediately:
             logger.info("Running initial scrape...")
             self.scrape_job()

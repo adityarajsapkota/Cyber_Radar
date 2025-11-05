@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from loguru import logger
 from time import time
 
-# Apply nest_asyncio to allow nested event loops
+
 nest_asyncio.apply()
 
 from app.config import settings

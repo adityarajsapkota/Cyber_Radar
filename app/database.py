@@ -12,15 +12,24 @@ from app.models import VulnerabilityArticle, CategoryEnum
 
 
 class CSVDatabase:
+    """Thread-safe CSV database manager."""
     
     def __init__(self, file_path: str = None):
+        """
+        Initialize database manager.
+        
+        Args:
+            file_path: Path to CSV file (uses settings default if None)
+        """
         self.file_path = Path(file_path or settings.csv_file_path)
         self.lock = Lock()
         self._ensure_file_exists()
         logger.info(f"CSV Database initialized: {self.file_path}")
     
     def _ensure_file_exists(self):
+        """Create CSV file with headers if it doesn't exist."""
         if not self.file_path.exists():
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
             df = pd.DataFrame(columns=[
                 'id', 'title', 'link', 'published', 'source',
                 'description', 'scraped_at', 'category'
@@ -29,15 +38,25 @@ class CSVDatabase:
             logger.info(f"Created new CSV file: {self.file_path}")
     
     def add_articles(self, articles: List[VulnerabilityArticle]) -> int:
+        """
+        Add new articles to the database.
+        
+        Args:
+            articles: List of articles to add
+        
+        Returns:
+            Number of new articles added (excluding duplicates)
+        """
         if not articles:
             return 0
         
         with self.lock:
             try:
-              
+                # Read existing data
                 existing_df = pd.read_csv(self.file_path)
                 existing_ids = set(existing_df['id'].tolist()) if not existing_df.empty else set()
-
+                
+                # Filter out duplicates
                 new_articles = [
                     article for article in articles
                     if article.id not in existing_ids
@@ -47,6 +66,7 @@ class CSVDatabase:
                     logger.info("No new articles to add (all duplicates)")
                     return 0
                 
+                # Convert to DataFrame
                 new_df = pd.DataFrame([
                     {
                         'id': article.id,
@@ -64,8 +84,27 @@ class CSVDatabase:
                 # Append new articles
                 combined_df = pd.concat([existing_df, new_df], ignore_index=True)
                 
-                # Sort by published date (newest first)
-                combined_df['published'] = pd.to_datetime(combined_df['published'])
+                # Sort by published date (newest first) - BULLETPROOF DATE PARSING
+                try:
+                    combined_df['published'] = pd.to_datetime(
+                        combined_df['published'], 
+                        format='ISO8601',
+                        errors='coerce'
+                    )
+                except:
+                    # Fallback to mixed format
+                    combined_df['published'] = pd.to_datetime(
+                        combined_df['published'], 
+                        errors='coerce'
+                    )
+                
+                # Remove rows with invalid dates (NaT)
+                before_drop = len(combined_df)
+                combined_df = combined_df.dropna(subset=['published'])
+                after_drop = len(combined_df)
+                if before_drop > after_drop:
+                    logger.warning(f"Dropped {before_drop - after_drop} articles with invalid dates")
+                
                 combined_df = combined_df.sort_values('published', ascending=False)
                 
                 # Keep only max_records
@@ -116,8 +155,24 @@ class CSVDatabase:
                     return [], 0
                 
                 # Convert date columns - BULLETPROOF DATE PARSING
-                df['published'] = pd.to_datetime(df['published'], format='ISO8601', utc=True, errors='coerce')
-                df['scraped_at'] = pd.to_datetime(df['scraped_at'], format='ISO8601', utc=True, errors='coerce')
+                try:
+                    df['published'] = pd.to_datetime(
+                        df['published'], 
+                        format='ISO8601',
+                        errors='coerce'
+                    )
+                    df['scraped_at'] = pd.to_datetime(
+                        df['scraped_at'], 
+                        format='ISO8601',
+                        errors='coerce'
+                    )
+                except:
+                    # Fallback
+                    df['published'] = pd.to_datetime(df['published'], errors='coerce')
+                    df['scraped_at'] = pd.to_datetime(df['scraped_at'], errors='coerce')
+                
+                # Drop rows with invalid dates
+                df = df.dropna(subset=['published'])
                 
                 # Apply filters
                 if source:
@@ -192,14 +247,23 @@ class CSVDatabase:
                     }
                 
                 # BULLETPROOF DATE PARSING
-                df['published'] = pd.to_datetime(df['published'], format='ISO8601', utc=True, errors='coerce')
+                try:
+                    df['published'] = pd.to_datetime(
+                        df['published'], 
+                        format='ISO8601',
+                        errors='coerce'
+                    )
+                except:
+                    df['published'] = pd.to_datetime(df['published'], errors='coerce')
+                
+                df = df.dropna(subset=['published'])
                 
                 return {
                     'total_articles': len(df),
                     'sources': df['source'].unique().tolist(),
                     'categories': df['category'].value_counts().to_dict(),
-                    'oldest_article': df['published'].min().isoformat(),
-                    'newest_article': df['published'].max().isoformat()
+                    'oldest_article': df['published'].min().isoformat() if len(df) > 0 else None,
+                    'newest_article': df['published'].max().isoformat() if len(df) > 0 else None
                 }
                 
             except Exception as e:
@@ -218,4 +282,4 @@ class CSVDatabase:
 
 
 # Global database instance
-db = CSVDatabase()
+db = CSVDatabase() 

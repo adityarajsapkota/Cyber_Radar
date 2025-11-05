@@ -110,30 +110,55 @@ async def get_vulnerabilities(
     offset: int = Query(default=0, ge=0, description="Number of articles to skip"),
     source: Optional[str] = Query(default=None, description="Filter by source name"),
     category: Optional[CategoryEnum] = Query(default=None, description="Filter by category"),
-    start_date: Optional[datetime] = Query(default=None, description="Filter by start date"),
-    end_date: Optional[datetime] = Query(default=None, description="Filter by end date"),
+    start_date: Optional[str] = Query(default=None, description="Filter by start date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    end_date: Optional[str] = Query(default=None, description="Filter by end date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
     search: Optional[str] = Query(default=None, description="Search in title and description"),
     api_key: str = Depends(verify_api_key)
 ):
     """
-    Get vulnerability articles with filtering options.
-    
-    - **limit**: Maximum number of articles to return (1-1000)
-    - **offset**: Number of articles to skip for pagination
-    - **source**: Filter by source name (e.g., "NVD", "SecurityWeek")
-    - **category**: Filter by category
-    - **start_date**: Filter articles published after this date
-    - **end_date**: Filter articles published before this date
-    - **search**: Search term to filter by title or description
+    - **start_date**: Filter articles published after this date (formats: "2025-11-05" or "2025-11-05T10:30:00")
+    - **end_date**: Filter articles published before this date (formats: "2025-11-05" or "2025-11-05T23:59:59")
     """
     try:
+       
+        parsed_start_date = None
+        parsed_end_date = None
+        
+        if start_date:
+            try:
+                
+                parsed_start_date = datetime.fromisoformat(start_date)
+            except ValueError:
+                try:
+                   
+                    parsed_start_date = datetime.fromisoformat(f"{start_date}T00:00:00")
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid start_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS"
+                    )
+        
+        if end_date:
+            try:
+                
+                parsed_end_date = datetime.fromisoformat(end_date)
+            except ValueError:
+                try:
+                    
+                    parsed_end_date = datetime.fromisoformat(f"{end_date}T23:59:59")
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid end_date format. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS"
+                    )
+        
         articles, total = db.get_articles(
             limit=limit,
             offset=offset,
             source=source,
             category=category,
-            start_date=start_date,
-            end_date=end_date,
+            start_date=parsed_start_date,
+            end_date=parsed_end_date,
             search=search
         )
         
@@ -143,6 +168,8 @@ async def get_vulnerabilities(
             articles=articles
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error retrieving vulnerabilities: {e}")
         raise HTTPException(
