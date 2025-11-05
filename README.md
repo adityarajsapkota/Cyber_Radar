@@ -74,7 +74,13 @@ The server will be live at `http://127.0.0.1:8000`.
 
 Upon starting, the application will perform an initial scrape of the news feeds.
 
-##  interagindo com a API
+2. Launch the Streamlit Dashboard
+In a new terminal, launch the Streamlit dashboard.
+code
+Bash
+```streamlit run dashboard.py```
+
+The dashboard will be accessible at `http://localhost:8501`.
 
 The API provides endpoints to access the aggregated news data.
 
@@ -90,18 +96,20 @@ Here you can view all available endpoints, see their request/response models, an
 ## 📂 Project Structure
 
 Cyber_Radar/
-├── app/                  # Core application source code
-│   ├── api.py            # API endpoint definitions
-│   ├── config.py         # Application configuration settings
-│   ├── main.py           # FastAPI application entry point
-│   ├── models.py         # Pydantic data models
-│   ├── scraper.py        # News scraping logic
-│   ├── scheduler.py      # Background task scheduling
-│   └── storage.py        # Data storage and retrieval (CSV)
-├── data/                 # Directory for the output CSV file
-│   └── cybersecurity_news.csv
-├── requirements.txt      # Project dependencies
-└── README.md             # This file```
+├── app/ # Core application source code
+│ ├── api.py # API endpoint definitions
+│ ├── config.py # Application configuration settings
+│ ├── main.py # FastAPI application entry point
+│ ├── models.py # Pydantic data models
+│ ├── scraper.py # News scraping logic
+│ ├── scheduler.py # Background task scheduling
+│ └── storage.py # Data storage and retrieval (CSV)
+├── data/ # Directory for the output CSV file
+│ └── cybersecurity_news.csv
+├── dashboard.py # The Streamlit dashboard script
+├── requirements.txt # Project dependencies
+└── README.md # This file
+
 
 ## 🤝 Contributing
 
